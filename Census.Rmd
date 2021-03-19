@@ -1,0 +1,1713 @@
+---
+title: "Census_income"
+author: "Arsen Samaiev"
+date: "19 03 2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, include=FALSE}
+#install.packages("expss")
+#install.packages(c('caret','dplyr','rpart','MASS','AUC','broom','ggplot2','randomForest','clustMixT ype'))
+#install.packages("gplots")
+#install.packages("graphics")
+#install.packages("ggcorrplot")
+#install.packages("corrplot")
+#install.packages("rattle")
+#install.packages("partykit")
+#install.packages("maptree")
+#install.packages("igraph")
+#install.packages("arulesViz")
+#install.packages("arulesCBA")
+library(arulesCBA)
+library(arulesViz)
+library(arules)
+library(igraph)
+library(maptree)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(party)
+library(partykit)
+library(ggcorrplot)
+library(corrplot)
+library(class)
+library(randomForest)
+library(rpart)
+library(graphics)
+library(gplots)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(ROCR)
+library(expss)
+library(caret)
+library(rpart)
+library(MASS) 
+library(AUC)
+library(broom)
+library(clustMixType)
+library(arules)
+library(klaR) 
+library(e1071)
+library(dummies)
+library(gridExtra)
+```
+
+# **Introduction**
+
+  In this analysis i will use the **Adult Income** data set. It's a decent data set, which is suitable for a project due to it's amount of data and attributes. The main idea is to determine whether the person has the income higher or lower than 50k.
+  
+  This data set isn't preprocessed and has some missing values. Further, I will explain every single attribute and make this data set clearer for analysis, so that I could fit it in the prediction models.
+
+![](/Users/Admin/Documents/imgs/view.jpg)
+
+
+
+********
+  
+# **Data Understanding**
+
+  The data, that I'm going to use are available freely on the official [UCI Machine Learning](https://archive.ics.uci.edu/ml/datasets/Census+Income) page. There are 15 attributes in total(categorical and integer only).  
+ 
+********
+  
+## **Overall information**
+  
+* Data Set Characteristics -- Multivariate
+* Attribute Characteristics -- Categorical, Integer
+* Associated Tasks -- Classification
+* Number of Instances -- 32561
+* Number of Attributes -- 15
+* Missing Values -- Yes
+* Area -- Social
+* Date Donated -- 01.05.1996
+* Number of Web Hits -- 395836
+
+********
+
+## **Attribute Information:**
+  
+  1. Age (Integer, Continuous)
+  
+  2. Workclass (Categorical)
+  + Private, Self-emp-not-inc, Self-emp-inc, Federal-gov, Local-gov, State-gov, Without-pay, Never-worked
+  
+  3. Fnlwgt (Integer, Continuous)
+  + Represents final weight, which is the number of units in the target population that the responding unit represents
+  
+  4. Education (Categorical)
+  +  Bachelors, Some-college, 11th, HS-grad, Prof-school, Assoc-acdm, Assoc-voc, 9th, 7th-8th, 12th, Masters, 1st-4th, 10th, Doctorate, 5th-6th, Preschool
+  
+  5. Education--num (Integer, Continuous)
+  + Represents each "Education" variable category with a specific number
+  
+  6. Marital-status (Categorical)
+  + Married-civ-spouse, Divorced, Never-married, Separated, Widowed, Married-spouse-absent, Married-AF-spouse
+  
+  7. Occupation (Categorical)
+  + Tech-support, Craft-repair, Other-service, Sales, Exec-managerial, Prof-specialty, Handlers-cleaners, Machine-op-inspct, Adm-clerical, Farming-fishing, Transport-moving, Priv-house-serv, Protective-serv, Armed-Forces
+  
+  8. Relationship (Categorical)
+  + Wife, Own-child, Husband, Not-in-family, Other-relative, Unmarried
+  
+  9. Race (Categorical)
+  + White, Asian-Pac-Islander, Amer-Indian-Eskimo, Other, Black
+  
+  10. Sex (Categorical)
+  + Male, Female
+  
+  11. Capital-gain (Integer, Continuous)
+  
+  12. Capital-loss (Integer, Continuous)
+  
+  13. Hours-per-week (Integer, Continuous)
+  
+  14. Native-country (Categorical)
+  + United-States, Cambodia, England, Puerto-Rico, Canada, Germany, Outlying-US(Guam-USVI-etc), India, Japan, Greece, South, China, Cuba, Iran, Honduras, Philippines, Italy, Poland, Jamaica, Vietnam, Mexico, Portugal, Ireland, France, Dominican-Republic, Laos, Ecuador, Taiwan, Haiti, Columbia, Hungary, Guatemala, Nicaragua, Scotland, Thailand, Yugoslavia, El-Salvador, Trinadad&Tobago, Peru, Hong, Holand-Netherlands
+  
+  15. Income (Categorical)
+  + ">50k", "<=50k"
+
+********
+
+## **Loading the Data**
+
+  I'm going to load the data set straight out from the index page. And the names will be changed by using this same page.
+
+```{r}
+  dataseturl = 'http://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data' 
+  datanameurl = 'http://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.names' 
+  census = read.table(dataseturl,sep = ',', fill = F, strip.white = T)
+  censusnames = readLines(datanameurl)[97:110]
+  censusnames = as.character(lapply(strsplit(censusnames,':'), function(x) x[1])) 
+  censusnames = c(censusnames,'income')
+  colnames(census) = censusnames 
+```
+
+  To make this data set more suitable for modeling and easier for coding, I will change the dash separated attributes to become separated by dots.
+  
+```{r}  
+names(census) = make.names(names(census))
+```
+
+  The summarized data look like this
+  
+```{r, echo=FALSE}  
+summary(census)
+```
+
+  The structure of loaded data
+  
+```{r}
+str(census)
+```
+
+********
+
+## **Missing Values**
+
+  The " ?" value only appears in categorical data, which doesn't "harm" any other numerical values. To avoid dropping the rows with " ?" values, they will be changed to "Unknown" in future preparation process.
+
+********
+
+## **Attribute Visualization**
+
+* Histograms of the numeric attributes
+  
+```{r}  
+par(mfrow=c(2,3))
+hist(census$age, main = "Age", col = "Wheat") 
+hist(census$education.num, main = "Education.num", col = "Wheat") 
+hist(census$hours.per.week, main = "Hours.per.week", col = "Wheat") 
+hist(census$capital.gain, main = "Capital.gain", col = "Wheat") 
+hist(census$capital.loss, main = "Capital.loss", col = "Wheat")
+hist(census$fnlwgt, main = "Fnlwgt", col = "Wheat")
+```
+
+  The histograms above show the average *age*, *education.num* and *hours.per.week*. These values provide the needed information for analysis by helping to understand which optimal age and education is required to gain over 50k. The other 3 variables (capital gain/loss and fnlwgt) don't provide useful information for analysis. Just because a lot of values are same or have no visible differentiation needed for analysis. That's why they will be removed in the preparation part.
+
+********
+
+* Barplots of the categorical attributes
+  
+```{r}  
+par(mfrow=c(2,4))
+barplot(table(census$marital.status),main='marital.status',col = 'orange') 
+barplot(table(census$occupation),main='occupation',col = 'orange') 
+barplot(table(census$relationship),main='relationship',col = 'orange') 
+barplot(table(census$race),main='race',col = 'orange') 
+barplot(table(census$sex),main='sex',col = 'orange')
+barplot(table(census$workclass),main='workclass',col = 'orange')
+barplot(table(census$native.country),main='native.country',col = 'orange')
+barplot(table(census$education),main = 'education',col = 'orange')
+```
+
+  The barplots above show the statistics of different status each unit has. Mostly married, white males with above average education are leading. The *native.country* variable will be removed in the preparation stage, because almost 90% of people are from the United States. *Education* will also be removed due to redundancy. The main reason why is because *education.num* explains the same categories in numeric values and it's easier to work with this kind of data. *Relationship* will be removed as well. This attribute complicates the data set, because it can be explained by *sex* and *marital.status*.
+
+********
+
+ * Histogram of age by income group
+  
+```{r}  
+ggplot(census) + aes(x=as.numeric(age), group=income, fill=income) +  ggtitle("Histogram of age by income group") + xlab("Age") + ylab("Income") +
+    geom_histogram(binwidth=1, color='black')
+```
+
+  By viewing the plot it's logical to admit that in general people aged from 25 to 50 are more likely to earn more than 50k.
+  
+********  
+
+## **Attribute Correlation**
+
+ * Correlation between numerical variables and income
+ 
+```{r}
+par(mfrow=c(2,2))
+boxplot (log(fnlwgt)~income, data =census, main = "Log(fnlwgt) by income", xlab = "Income", ylab = "Fnlwgt", col = "salmon")
+boxplot (age~income, data =census, main = "Age by income", xlab = "Income", ylab = "Age", col = "salmon")
+boxplot (education.num~income, data =census, main = "Years of Education by income",
+xlab = "Income", ylab = "Years of Education", col = "salmon")
+boxplot (hours.per.week~income, data =census, main = "Hours.per.week by income",
+xlab = "Income", ylab = "Hours.per.week", col = "salmon")
+```
+
+ + These correlation boxplots prove that *fnlwgt* doesn't bring much of use. Those who are older, than 30 and have at least 8+ years of education are most likely to earn ">50k".
+  
+  * Correlation measures the relation between two variables. When two variables are highly correlated that they can explain each other, then the collinearity problem has to be dealt with.
+  
+```{r}  
+correlat = cor(census[c(1,3,5,11,12,13)])
+corrplot(correlat, col = "black", number.cex = .7, method = "number")
+```
+
+ * Corrplot shows no correlation between the variables. No collinearity problem detected.
+
+********
+
+ * Correlation between categorical variables and income
+ 
+```{r}
+qplot(income, data = census, fill = relationship) + facet_grid (. ~ relationship)
+qplot(income, data = census, fill = race) + facet_grid (. ~ race)
+qplot(income, data = census, fill = sex) + facet_grid (. ~ sex)
+```
+
+  By viewing these correlations it's visible that those, who are married have the biggest probability of earning ">50k". Mostly white, male and in a higher job hierarchy. Due to *workclass*, *occupation*, *native.country* and *marital-status* having long names and vast group differentiation, they cannot be visualized properly. Their correlations will be shown in the data preparation phase.
+  
+********
+
+# **Data Preparation**
+
+ * Firstly, I'm going to remove the useless variables from this data frame.
+  
+```{r}
+census$education = NULL
+census$fnlwgt = NULL
+```
+
+********
+
+ * Secondly, I will regroup the categorical data for better understanding and analysis
+ 
+## **Workclass**
+
+ + It is obvious that the majority makes less than 50k. However, those, who make over 50k are mainly in midcareer. That's why the *workclass* variable has to be regrouped. But first, the missing values have to be dealt with. The variable can be spread into 4 different groups:
+  
+  
+  1. Government (Federal-gov, Local-gov, State-gov)
+  
+  2. Self-employed (Self-emp-inc, Self-emp-not-inc)
+  
+  3. Private
+  
+  4. Other (Unknown, Never-worked, Without-pay)
+
+```{r}
+census$workclass = gsub('^Federal-gov', 'Government', census$workclass)
+census$workclass = gsub('^Local-gov', 'Government', census$workclass)
+census$workclass = gsub('^State-gov', 'Government', census$workclass) 
+  
+census$workclass = gsub('^Self-emp-inc', 'Self-Employed', census$workclass)
+census$workclass = gsub('^Self-emp-not-inc', 'Self-Employed', census$workclass)
+  
+census$workclass = gsub('^Never-worked', 'Other', census$workclass)
+census$workclass = gsub('^Without-pay', 'Other', census$workclass)
+census$workclass = gsub('^Other', 'Other', census$workclass)
+census$workclass = gsub('^Unknown', 'Other', census$workclass)
+  
+census$workclass = as.factor(census$workclass)
+levels(census$workclass)[1] = 'Unknown'
+census$workclass = gsub('Unknown', 'Other', census$workclass)
+census$workclass = as.factor(census$workclass)
+summary(census$workclass)
+```
+
+After splitting, I'll create a new data frame, which has the *workclass* by *income* variable relations and their count. Each group will be divided to the one, that earns "<=50k" and ">50k".
+
+```{r}
+job = data.frame(table(census$income,census$workclass))
+names(job) = c('income', 'workclass', 'count')
+job
+```
+
+```{r}
+qplot(income, data = census, fill = workclass) + facet_grid (. ~ workclass)
+```
+
+```{r, echo=FALSE, include=FALSE}
+job = ddply(job, .(workclass), transform, percent = count/sum(count) * 100)
+  
+job = ddply(job, .(workclass), transform, pos = (cumsum(count) - 0.5 * count))
+job$label = paste0(sprintf("%.0f", job$percent), "%")
+```
+
+```{r}
+ggplot(data = job, aes(x = workclass, y = count, fill = income)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = label), vjust = -0.3, color="black", 
+            position = position_dodge(0.9), size = 3.5) +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal() +
+  ggtitle("Overall Income by Workclass")
+```
+
+  The plot shows how the income differs by groups, where "self-employed" group is leading by income ratio.
+  
+********
+
+## **Education-num**
+
+  + Since *education-num* is a continuous representation of *education* variable. The same barplot will be used to visualize relations between *education-num* and *income*.
+  
+```{r}
+  study = data.frame(table(census$income, census$education.num))
+  names(study) = c('income', 'education.num', 'count')
+  study
+```
+
+```{r, include=FALSE}
+  study = ddply(study, .(education.num), transform, percent = count/sum(count) * 100)
+  
+  study = ddply(study, .(education.num), transform, pos = (cumsum(count) - 0.5 * count))
+  study$label = paste0(sprintf("%.0f", study$percent), "%")
+  
+  study$label[which(study$percent < 5)] = NA
+```
+
+```{r}
+  ggplot(data = study, aes(x = education.num, y = count, fill = income)) +
+    geom_bar(stat = "identity", position = position_dodge()) +
+    geom_text(aes(label = label), vjust = -0.3, color="black", 
+              position = position_dodge(0.9), size = 2.5) +
+    scale_fill_brewer(palette = "Paired") +
+    theme_minimal() +
+    ggtitle("Overall Income by Education")
+```
+
+  + The graph shows, that the higher the education is the bigger is the income. The numbers grow after the 8th group.
+  
+********  
+
+## **Occupation**
+
+  This variable can also be regrouped for better visualization and understanding. There are 6 visible groups:
+  
+  1. Blue-collar (Craft-repair, Farming-fishing, Handlers-cleaners, Machine-op-inspct, Transport-moving)
+  
+  2. White-collar (Adm-clerical, Exec-managerical)
+  
+  3. Sales
+  
+  4. Service (Other-service, Priv-house-serv, Protective-serv, Tech-support)
+  
+  5. Professional (Prof-speciality)
+  
+  6. Other (Unknown, Armed-forces)
+  
+```{r}
+census$occupation = gsub('Adm-clerical', 'White-Collar', census$occupation)
+census$occupation = gsub('Craft-repair', 'Blue-Collar', census$occupation)
+census$occupation = gsub('Exec-managerial', 'White-Collar', census$occupation)
+census$occupation = gsub('Farming-fishing', 'Blue-Collar', census$occupation)
+census$occupation = gsub('Handlers-cleaners', 'Blue-Collar', census$occupation)
+census$occupation = gsub('Machine-op-inspct', 'Blue-Collar', census$occupation)
+census$occupation = gsub('Other-service', 'Service', census$occupation)
+census$occupation = gsub('Priv-house-serv', 'Service', census$occupation)
+census$occupation = gsub('Prof-specialty', 'Professional', census$occupation)
+census$occupation = gsub('Protective-serv', 'Service', census$occupation)
+census$occupation = gsub('Tech-support', 'Service', census$occupation)
+census$occupation = gsub('Transport-moving', 'Blue-Collar', census$occupation)
+census$occupation = gsub('Unknown', 'Other', census$occupation)
+census$occupation = gsub('Armed-Forces', 'Other', census$occupation)
+census$occupation = as.factor(census$occupation)
+levels(census$occupation)[1] = 'Unknown'
+census$occupation = gsub('Unknown', 'Other', census$occupation)
+census$occupation = as.factor(census$occupation)
+summary(census$occupation)
+```
+  
+```{r}
+occ= data.frame(table(census$income, census$occupation))
+names(occ) = c('income', 'occupation', 'count')
+occ
+```
+  
+```{r, include=FALSE}
+occ = ddply(occ, .(occupation), transform, percent = count/sum(count) * 100)
+occ = ddply(occ, .(occupation), transform, pos = (cumsum(count) - 0.5 * count))
+occ$label = paste0(sprintf("%.0f", occ$percent), "%")
+```
+
+```{r}
+qplot(income, data = census, fill = occupation) + facet_grid (. ~ occupation)
+```
+
+```{r}
+ggplot(data = occ, aes(x = occupation,y = count, fill = income)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = label), vjust = -0.3, color="black", 
+            position = position_dodge(0.9), size = 2.5) +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal() +
+  ggtitle("Overall Income by Occupation")
+```  
+
+The barplot shows that "White-Collar" and "Proffesional" groups have the highest percentage of earning ">50k". Eventhough the "Blue-Collar" group is leading by count.
+
+********
+
+## **Marital-status**
+
+```{r}
+summary(census$marital.status)
+```
+
+  This variable can be divided into 5 groups:
+  
+  1. Divorced
+  
+  2. Married (Married-AF-spouse, Married-civ-spouse, Married-spouse-absent)
+  
+  3. Separated
+  
+  4. Single
+  
+  5. Widowed
+
+```{r}
+  census$marital.status = gsub('Married-AF-spouse', 'Married', census$marital.status)
+  census$marital.status = gsub('Married-civ-spouse', 'Married', census$marital.status)
+  census$marital.status = gsub('Married-spouse-absent', 'Married', census$marital.status)
+  census$marital.status = gsub('Never-married', 'Single', census$marital.status)
+  census$marital.status = as.factor(census$marital.status)
+  summary(census$marital.status)
+```
+  
+```{r}
+  status = data.frame(table(census$income, census$marital.status))
+  names(status) = c('income', 'marital.status', 'count')
+  status
+```
+  
+```{r}
+  status = ddply(status, .(marital.status), transform, percent = count/sum(count) * 100)
+  
+  status = ddply(status, .(marital.status), transform, pos = (cumsum(count) - 0.5 * count))
+  status$label = paste0(sprintf("%.0f", status$percent), "%")
+```
+
+```{r}
+qplot(income, data = census, fill = marital.status) + facet_grid (. ~ marital.status)
+```
+
+```{r}
+  ggplot(data = status, aes(x = marital.status,y = count, fill = income)) +
+    geom_bar(stat = "identity", position = position_dodge()) +
+    geom_text(aes(label = label), vjust = -0.3, color="black", 
+              position = position_dodge(0.9), size = 2.5) +
+    scale_fill_brewer(palette = "Paired") +
+    theme_minimal() +
+    ggtitle("Overall Income by Marital-status")
+```
+
+The percentage show that only the "Married" group is able to earn ">50k" in most cases.
+
+********
+
+## **Race**
+
+ This variable doesn't need much of a regrouping. I will just add "Amer-Indian-Eskimo" and "Asian-Pac-Islander" to the "Other" group because they don't have a decent amount of instances.
+ 
+```{r}
+census$race = gsub('Amer-Indian-Eskimo', 'Other', census$race)
+census$race = gsub('Asian-Pac-Islander', 'Other', census$race)
+census$race = as.factor(census$race)
+summary(census$race)
+```
+
+```{r}
+races = data.frame(table(census$income, census$race))
+names(races) = c('income', 'race', 'count')
+races
+```
+  
+```{r, include=FALSE}
+races = ddply(races, .(race), transform, percent = count/sum(count) * 100)
+  
+races = ddply(races, .(race), transform, pos = (cumsum(count) - 0.5 * count))
+races$label = paste0(sprintf("%.0f", races$percent), "%")
+str(races)
+```
+  
+```{r}
+ggplot(data = races, aes(x = race,y = count, fill = income)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = label), vjust = -0.3, color="black", 
+            position = position_dodge(0.9), size = 2.5) +
+  scale_fill_brewer(palette = "Paired") +
+  theme_minimal() +
+  ggtitle("Overall Income by Race")
+```
+
+ * The barplot shows that the "White" group earns the most.
+  
+********  
+  
+## **Capital Gain/Loss**  
+  
+  This variable contains a lot of "empty" values, which are equal to zero. Instead, a new variable will be created. *Capital-change* variable will describe the difference between gain and loss.
+  
+```{r}  
+census$capital.change = census$capital.gain - census$capital.loss
+census$capital.gain = NULL
+census$capital.loss = NULL
+census = census[c(1,2,3,4,5,6,7,8,9,10,12,11)]
+```  
+********
+
+## **Native.country**
+
+  The last variable has the most groups so far. This must be changed. These groups will be retransformed into more general ones by their region:
+  
+  1. Other(Other, South, Japan)
+  
+  2. Asia(Vietnam, Laos, Cambodia, Thailand, China, India, Hong, Iran, Philippines, Taiwan)
+  
+  3. America(Canada, Cuba, Dominican-Republic, Guatemala, Haiti, Honduras, Jamaica, Mexico, Nicaragua, Puerto-Rico, El-Salvador, United-States, Ecuador, Peru, Columbia, Trinadad&Tobago)
+  
+  4. Europe(France, Germany, Greece, Holand-Netherlands, Italy, Hungary, Ireland, Poland, Portugal, Scotland, England, Yugoslavia)
+  
+
+```{r}
+census$native.country = gsub('South', 'Other', census$native.country)
+census$native.country = gsub('Japan', 'Other', census$native.country)
+
+census$native.country = gsub('Vietnam', 'Asia', census$native.country)
+census$native.country = gsub('Laos', 'Asia', census$native.country)
+census$native.country = gsub('Cambodia', 'Asia', census$native.country)
+census$native.country = gsub('Thailand', 'Asia', census$native.country)
+census$native.country = gsub('China', 'Asia', census$native.country)
+census$native.country = gsub('India', 'Asia', census$native.country)
+census$native.country = gsub('Hong', 'Asia', census$native.country)
+census$native.country = gsub('Iran', 'Asia', census$native.country)
+census$native.country = gsub('Philippines', 'Asia', census$native.country)
+census$native.country = gsub('Taiwan', 'Asia', census$native.country)
+
+census$native.country = gsub('Canada', 'America', census$native.country)
+census$native.country = gsub('Cuba', 'America', census$native.country)
+census$native.country = gsub('Dominican-Republic', 'America', census$native.country)
+census$native.country = gsub('Guatemala', 'America', census$native.country)
+census$native.country = gsub('Haiti', 'America', census$native.country)
+census$native.country = gsub('Honduras', 'America', census$native.country)
+census$native.country = gsub('Jamaica', 'America', census$native.country)
+census$native.country = gsub('Mexico', 'America', census$native.country)
+census$native.country = gsub('Nicaragua', 'America', census$native.country)
+census$native.country = gsub('Puerto-Rico', 'America', census$native.country)
+census$native.country = gsub('El-Salvador', 'America', census$native.country)
+census$native.country = gsub('United-States', 'America', census$native.country)
+census$native.country = gsub('Ecuador', 'America', census$native.country)
+census$native.country = gsub('Peru', 'America', census$native.country)
+census$native.country = gsub('Columbia', 'America', census$native.country)
+census$native.country = gsub('Trinadad&Tobago', 'America', census$native.country)
+census$native.country = gsub('Outlying-US(Guam-USVI-etc)', 'America', census$native.country)
+
+census$native.country = gsub('France', 'Europe', census$native.country)
+census$native.country = gsub('Germany', 'Europe', census$native.country)
+census$native.country = gsub('Greece', 'Europe', census$native.country)
+census$native.country = gsub('Holand-Netherlands', 'Europe', census$native.country)
+census$native.country = gsub('Italy', 'Europe', census$native.country)
+census$native.country = gsub('Hungary', 'Europe', census$native.country)
+census$native.country = gsub('Ireland', 'Europe', census$native.country)
+census$native.country = gsub('Poland', 'Europe', census$native.country)
+census$native.country = gsub('Portugal', 'Europe', census$native.country)
+census$native.country = gsub('Scotland', 'Europe', census$native.country)
+census$native.country = gsub('England', 'Europe', census$native.country)
+census$native.country = gsub('Yugoslavia', 'Europe', census$native.country)
+
+census$native.country = as.factor(census$native.country)
+
+levels(census$native.country)[1] = 'Unknown'
+census$native.country = gsub('Unknown', 'Other', census$native.country)
+
+census$native.country = as.factor(census$native.country)
+
+summary(census$native.country)
+```
+  
+```{r}
+qplot(income, data = census, fill = census$native.country) + facet_grid (. ~ census$native.country)
+```
+
+ * The barplot shows that nearly all of the data were taken from America (United-States in general). That's why this variable will be dropped. Relationship is dropped as well.
+ 
+```{r} 
+census$native.country = NULL
+census$relationship = NULL
+census$sex = as.factor(census$sex)
+census$income = as.factor(census$income)
+```
+********
+  
+  This is the end of the preprocessing phase. This data set is now ready for modeling and classification. The summary now looks like this.
+  
+```{r}  
+summary(census)
+```
+
+********  
+
+# **Modeling**
+
+  As was stated above, the main idea is to classify whether the income is above or below 50k, which is a categorical variable. Confusion matrix will be used to get accuracy and missclassification rate. Since, the data set is prepared for the analysis I will use different models, such as:
+  
+ 1. Logistic Regression
+ 
+ 2. Classification and Regression Tree(CART)
+ 
+ 3. Random Forest
+ 
+ 4. Naive Bayes Classification
+ 
+ 5. K-nearest Neighbours(KNN)
+ 
+ 6. Classification Based On Association Rules Algorithm(CBA)
+ 
+********
+
+## **Train/test Splitting**
+
+  Before modeling, the data has to be split. I will try different split ratio:
+  
+ * 80/20 %
+
+ * 70/30 %
+ 
+ * 60/40 %
+ 
+```{r}
+size_1 = round(.8 * dim(census)[1])
+census_train_1 = census[1:size_1,]
+census_test_1 = census[-(1:size_1),]
+```
+
+```{r}
+size_2 = round(.7 * dim(census)[1])
+census_train_2 = census[1:size_2,]
+census_test_2 = census[-(1:size_2),]
+```
+
+```{r}
+size_3 = round(.6 * dim(census)[1])
+census_train_3 = census[1:size_3,]
+census_test_3 = census[-(1:size_3),]
+```
+
+********
+
+## **Logistic regression** 
+
+  Logistic Regression is used to model the probability of a certain class (*income* in this case). This regression is estimating the parameters of a logistic model to model a binary dependent variable.
+
+### **80/20 %**
+
+  To begin with, I'm going to create the model with 80% on train and 20% on test division. 
+  
+```{r}
+logicregress_1 = glm(income ~ ., data = census_train_1, family = binomial('logit'))
+summary(logicregress_1)  
+```  
+
+```{r}
+confint(logicregress_1)
+```
+
+The logistic regression appears to fit the data well. However, to explore the other possible results, I will try the backward and forward selection as well.
+
+```{r, echo=FALSE, include=FALSE}
+m_full_1 = logicregress_1
+m_null_1 = glm(income ~ 1, data = census_train_1, family = binomial('logit'))
+```
+
+ * Backward Selection
+ 
+```{r}
+step(m_full_1, trace = F, scope = list(lower=formula(m_null_1), upper=formula(m_full_1)),
+     direction = 'backward')
+```
+
+********
+
+ * Forward Selection
+
+```{r}
+step(m_full_1, trace = F, scope = list(lower=formula(m_null_1), upper=formula(m_full_1)),
+     direction = 'forward')
+```
+
+********
+
+  Both backward and forward selection algorithms give the same model as the initial fit, meaning that the original model will be chosen.
+  
+```{r}  
+index_1 = 1:dim(census_train_1)[1]
+dev_resid_1 = residuals(logicregress_1)
+income_1 = census_train_1$income
+dff_1 = data.frame(index_1, dev_resid_1, income_1)
+  
+ggplot(dff_1, aes(x = index_1, y = dev_resid_1, color = income_1)) + 
+  ggtitle('Plot of Deviance Residuals') + geom_point() + 
+  geom_hline(yintercept = 3, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = -3, linetype = 'dashed', color = 'blue')
+```
+
+  This regression is modeling the probability that an individual makes more than 50K. Meaning that the response, which is higher than 0 indicates higher chance of making > 50k. A confusion matrix is presented to show how well the model predicts *income*.
+  
+```{r}  
+prob_1 = predict(logicregress_1, census_test_1, type = 'response')
+pred_1 = rep('<=50K', length(prob_1))
+pred_1[prob_1>=.5] = '>50K'
+  
+cf_1 = table(pred_1, census_test_1$income)
+cf_1
+```
+
+The prediction result has an accuracy of 83.67% and a missclassification rate of 16.33%.
+
+********  
+
+### **70/30 %**
+
+  The same classifier will be created, using the 70/30% split this time.
+  
+```{r}  
+logicregress_2 = glm(income ~ ., data = census_train_2, family = binomial('logit'))
+summary(logicregress_2)  
+```
+
+```{r}
+confint(logicregress_2)
+```
+
+  Nearly same results were achieved, which means that the original model will be used for classification.
+
+```{r}  
+index_2 = 1:dim(census_train_2)[1]
+dev_resid_2 = residuals(logicregress_2)
+income_2 = census_train_2$income
+dff_2 = data.frame(index_2, dev_resid_2, income_2)
+  
+ggplot(dff_2, aes(x = index_2, y = dev_resid_2, color = income_2)) + 
+  ggtitle('Plot of Deviance Residuals') + geom_point() + 
+  geom_hline(yintercept = 3, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = -3, linetype = 'dashed', color = 'blue')
+```
+
+  It's hard to determine whether this split is better than 80/20% by viewing the plot. However, the confusion matrix will show the diiference.
+
+```{r}  
+prob_2 = predict(logicregress_2, census_test_2, type = 'response')
+pred_2 = rep('<=50K', length(prob_2))
+pred_2[prob_2>=.5] = '>50K'
+  
+cf_2 = table(pred_2, census_test_2$income)
+cf_2
+```
+
+  Interestingly enough, the classification results have improved. Accuracy has increased to 84.27% and a missclassification rate has decreased to 15.73%.
+  
+********
+
+### **60/40 %**
+
+  70/30 % split has shown the best results so far.  But there's a probability that the 60/40 % split will do better in classification.
+  
+```{r}  
+logicregress_3 = glm(income ~ ., data = census_train_3, family = binomial('logit'))
+summary(logicregress_3)  
+```  
+  
+```{r}
+confint(logicregress_3)
+```
+
+  The third classifier appears to be suitable for fitting as well. So, the original classifier will be used as well.
+  
+```{r}  
+index_3 = 1:dim(census_train_3)[1]
+dev_resid_3 = residuals(logicregress_3)
+income_3 = census_train_3$income
+dff_3 = data.frame(index_3, dev_resid_3, income_3)
+  
+ggplot(dff_3, aes(x = index_3, y = dev_resid_3, color = income_3)) + 
+  ggtitle('Plot of Deviance Residuals') + geom_point() + 
+  geom_hline(yintercept = 3, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = -3, linetype = 'dashed', color = 'blue')
+```  
+
+  The plot shows the results a bit closer to the centre. Although, this doesn't tell much of a difference. The confusion matrix will show the truth.
+  
+```{r}  
+prob_3 = predict(logicregress_3, census_test_3, type = 'response')
+pred_3 = rep('<=50K', length(prob_3))
+pred_3[prob_3>=.5] = '>50K'
+  
+cf_3 = table(pred_3, census_test_3$income)
+cf_3
+```  
+
+  The 60/40 % split didn't achieve better results, giving the similar ones. Accuracy remains on 84.27% mark and a missclassification rate of 15.73% holds the same position.
+  
+********
+
+## **Classification and Regression Tree(CART)**
+
+  Now, I'm going to "grow" a classification tree on the training data set. The CART model is obtained by recursively partitioning the data space and fitting a simple prediction model within each partition.
+
+### **80/20 %**  
+
+  The first tree will be created with 80/20 % split ratio.
+  
+```{r}  
+tree_1 = rpart(income ~ ., data = census_train_1, method = 'class', cp = 1e-3)
+
+prp(tree_1,varlen=8, cex = 0.7)
+```
+
+```{r}
+tree_1.pred.prob = predict(tree_1, newdata = census_test_1, type = 'prob')
+tree_1.pred = predict(tree_1, newdata = census_test_1, type = 'class')
+confusionMatrix(tree_1.pred,census_test_1$income) 
+```
+
+  The confusion matrix shows better results, than the ones achieved from classifiers above. The prediction result has an accuracy of 85.96% and a missclassification rate of 14.04%
+
+********
+
+### **70/30 %**
+
+  The practice has shown, that 70/30 % split is the best for analysis.
+  
+```{r}  
+tree_2 = rpart(income ~ ., data = census_train_2, method = 'class', cp = 1e-3)
+prp(tree_2,varlen=4, faclen = 4, fallen.leaves = FALSE, tweak = 1.7, compress = FALSE, branch = 0.3, gap = 1.5, cex = 0.3)
+```
+
+```{r}
+tree_2.pred.prob = predict(tree_2, newdata = census_test_2, type = 'prob')
+tree_2.pred = predict(tree_2, newdata = census_test_2, type = 'class')
+confusionMatrix(tree_2.pred,census_test_2$income)  
+```  
+  
+  As was expected, the results have improved. Prediction accuracy is now on the 86.09% mark and a missclassification rate is 13.91%.
+  
+********
+
+### **60/40 %**
+  
+  Previously, this split hasn't made much of a difference. However, it was used in the completely another classifier.
+  
+```{r}  
+tree_3 = rpart(income ~ ., data = census_train_3, method = 'class', cp = 1e-3)
+prp(tree_3,varlen=8, cex = 0.7)
+```
+
+```{r}
+tree_3.pred.prob = predict(tree_3, newdata = census_test_3, type = 'prob')
+tree_3.pred = predict(tree_3, newdata = census_test_3, type = 'class')
+
+confusionMatrix(tree_3.pred,census_test_3$income) 
+```   
+
+  This split has changed the results. However, it made them worse, than the 70/30 % analog. Accuracy has decreased to 85.89% and a missclassification rate has increased to 14.11%.
+  
+********  
+
+## **Random Forest**
+
+  Random Forest is an another kind of tree classificators. It improves predictive accuracy by generating a large number of bootstrapped trees. Final predicted outcome is attained by combining the results across all of the trees. Which means, that better results are expected.
+
+### **80/20 %**
+
+  The first classifier will have the 80/20 % split.
+  
+```{r}
+set.seed(2)
+rf_1 = randomForest(income ~ ., data = census_train_1, importance = TRUE, ntree = 1000)
+varImpPlot(rf_1)
+```
+
+```{r}
+rf_1.pred.prob = predict(rf_1, newdata = census_test_1, type = 'prob')
+rf_1.pred = predict(rf_1, newdata = census_test_1, type = 'class')
+confusionMatrix(rf_1.pred,census_test_1$income)
+```
+
+  Random Forest has performed nearly better, than CRAN by showing prediction accuracy of 86.09% and a missclassification rate of 13.91%.
+
+********
+
+### **70/30 %**
+
+  This split is expected to improve the accuracy.
+  
+```{r}  
+set.seed(22)
+rf_2 = randomForest(income ~ ., data = census_train_2, importance = TRUE, ntree = 1000)
+varImpPlot(rf_2)
+```
+
+```{r}
+rf_2.pred.prob = predict(rf_2, newdata = census_test_2, type = 'prob')
+rf_2.pred = predict(rf_2, newdata = census_test_2, type = 'class')
+confusionMatrix(rf_2.pred,census_test_2$income)
+```  
+
+  The prediction accuracy has increased to 86.16% and a missclassifiation rate has decreased to 13.84%. 
+  
+********  
+  
+### **60/40 %**  
+
+  The 70/30 % split shows pleasant results. But does this mean that higher division could score better as well?
+  
+```{r}  
+set.seed(222)
+rf_3 = randomForest(income ~ ., data = census_train_3, importance = TRUE, ntree = 1000)
+varImpPlot(rf_3)
+```
+
+```{r}
+rf_3.pred.prob = predict(rf_3, newdata = census_test_3, type = 'prob')
+rf_3.pred = predict(rf_3, newdata = census_test_3, type = 'class')
+confusionMatrix(rf_3.pred,census_test_3$income)
+```   
+  
+ Unfortunately, the classifier didn't improve. Prediction accuracy is 86.08% and missclassification rate is 13.92%.
+ 
+********
+ 
+## **Naive Bayes Classification** 
+
+  Naive Bayes comes from a simple probabilistic classifier family, based on applying Bayes'theorem with strong (naive) independence assumptions between the features
+  
+********  
+
+### **80/20 %**
+
+  As always, the first classifier will be tested with 80/20 % split.
+  
+```{r}  
+NB_model_1 = naiveBayes(income~.,data = census_train_1)
+NB_prediction_1 = predict(NB_model_1,census_test_1) 
+matrix_1 = table(NB_prediction_1, census_test_1$income)
+plot(matrix_1)
+confusionMatrix(NB_prediction_1,census_test_1$income)  
+```  
+  
+  This simple model didn't perform significantly. Accuracy hasn't improved, 81.25% was achieved and missclassification rate is 18.75%
+  
+********  
+  
+### **70/30 %**
+
+  Eventhough the first split wasn't as productive as expected, the 70/30 % can make a difference.
+  
+```{r}  
+NB_model_2 = naiveBayes(income~.,data = census_train_2) 
+NB_prediction_2 = predict(NB_model_2,census_test_2)
+matrix_2 = table(NB_prediction_2, census_test_2$income)
+plot(matrix_2)
+confusionMatrix(NB_prediction_2,census_test_2$income)  
+```   
+
+  A minor increase in accuracy was achieved - 81.33%, with a missclassification rate of 18.67%.
+
+********
+  
+### **60/40 %**  
+  
+  This split is the last chance of improving the classifier statistics.
+  
+```{r}  
+NB_model_3 = naiveBayes(income~.,data = census_train_3) 
+NB_prediction_3 = predict(NB_model_3,census_test_3) 
+matrix_3 = table(NB_prediction_3, census_test_3$income)
+plot(matrix_3)
+confusionMatrix(NB_prediction_3,census_test_3$income)  
+```   
+  
+  Interestingly enough this split has brough the worst results. Prediction accuracy of 81.14% and missclassification rate of 18.86%.
+
+********
+
+## **K-nearest Neighbours(KNN)**
+
+  This is the last classifier, that I'm going to use in the analysis. KNN will use numeric attributes for the prediction. That's why further data retransforming is required. KNN will be tested with diiferent cluster variations:
+  
+ * K = 5
+ 
+ * K = 10
+ 
+ * K = 15
+  
+********  
+  
+###  **80/20 %**
+  
+  I will divide the train/test data to 2 different data frames. First will contain all the numeric attributes and the second will have the *income* values.
+  
+```{r}  
+census.train_1 = census_train_1[,c(1,3,8,9)]
+census.test_1 = census_test_1[,c(1,3,8,9)]
+census.trainLabels_1 = census_train_1[,10] 
+census.testLabels_1 = census_test_1[,10] 
+set.seed(55)
+census_pred_1_5 = knn(train = census.train_1, test = census.test_1, cl = census.trainLabels_1, k = 5)
+confusionMatrix(census_pred_1_5,census.testLabels_1)
+```  
+
+  First fit with 5 clusters shows a prediction accuracy of 83.49% and a missclassification rate of 16.51%. 
+ 
+********
+  
+```{r}
+set.seed(155)
+census_pred_1_10 = knn(train = census.train_1, test = census.test_1, cl = census.trainLabels_1, k = 10)
+confusionMatrix(census_pred_1_10,census.testLabels_1)
+```
+
+  10 clusters got worse results. Accuracy - 83.31%. Missclassification rate - 16.69%
+
+********
+  
+```{r}
+set.seed(15)
+census_pred_1_15 = knn(train = census.train_1, test = census.test_1, cl = census.trainLabels_1, k = 15)
+confusionMatrix(census_pred_1_15,census.testLabels_1)
+```
+
+  So far, 5 clusters are leading in prediction. Accuracy - 83.43%. Missclassification rate - 16.57%.
+  
+********
+
+### **70/30 %**
+
+  The same division is required. First fit on 5 clusters will show the difference between the previous split.
+  
+```{r}  
+census.train_2 = census_train_2[,c(1,3,8,9)]
+census.test_2 = census_test_2[,c(1,3,8,9)]
+census.trainLabels_2 = census_train_2[,10] 
+census.testLabels_2 = census_test_2[,10] 
+set.seed(5)
+census_pred_2_5 = knn(train = census.train_2, test = census.test_2, cl = census.trainLabels_2, k = 5)
+confusionMatrix(census_pred_2_5,census.testLabels_2)
+```   
+
+  As was expected, the accuracy is higher - 83.56%. Although, it's not decent enough. Missclassification rate - 16.44%.
+  
+********
+
+```{r}
+set.seed(10)
+census_pred_2_10 = knn(train = census.train_2, test = census.test_2, cl = census.trainLabels_2, k = 10)
+confusionMatrix(census_pred_2_10,census.testLabels_2)
+```
+
+  Only a small decrease was achieved. 83.48% prediction accuracy so far and 16.52% missclassification rate.
+  
+********
+
+```{r}
+set.seed(15)
+census_pred_2_15 = knn(train = census.train_2, test = census.test_2, cl = census.trainLabels_2, k = 15)
+confusionMatrix(census_pred_2_15,census.testLabels_2)
+```
+
+  No further improvement in accuracy. It remains as same as the 10 cluster model, only 0.01% lower.
+
+********
+  
+### **60/40 %**  
+
+  This split is the last hope of improving the prediction accuracy.
+  
+```{r}  
+census.train_3 = census_train_3[,c(1,3,8,9)]
+census.test_3 = census_test_3[,c(1,3,8,9)]
+census.trainLabels_3 = census_train_3[,10] 
+census.testLabels_3 = census_test_3[,10] 
+set.seed(5)
+census_pred_3_5 = knn(train = census.train_3, test = census.test_3, cl = census.trainLabels_3, k = 5)
+confusionMatrix(census_pred_3_5,census.testLabels_3)
+```  
+
+  Unfortunately, this split shows the worst performance. Prediction accuracy of 82.99% and missclassification rate of 17.01%.
+  
+********
+
+```{r}
+set.seed(10)
+census_pred_3_10 = knn(train = census.train_3, test = census.test_3, cl = census.trainLabels_3, k = 10)
+confusionMatrix(census_pred_3_10,census.testLabels_3)
+```
+
+  With 10 clusters the accuracy has improved - 83.29%. Missclassification rate - 16.71%. 
+  
+********
+
+```{r}
+set.seed(15)
+census_pred_3_15 = knn(train = census.train_3, test = census.test_3, cl = census.trainLabels_3, k = 15)
+confusionMatrix(census_pred_3_15,census.testLabels_3)
+```
+
+  The prediction accuracy didn't improve at all - 83.22%. Missclassification rate - 16.78%. 
+  
+********  
+  
+## **Classification Based On Association Rules Algorithm(CBA)**  
+
+  This last model will predict the *income* variable by the rules, that it had created. Despite CART classificator, It will use a bit different logic. In general every possible association to every attribute will be created to classify *income*. To avoid complicating the model, all continuous numeric variables will be discretized.
+  
+********  
+  
+### **Only Factor Rules(Discretization)**
+
+  Unfortunately, only factor data can be used in this classifier. However, the continuous numeric variables can be "retransformed" to factor via discretization. *capital.change* wont be used, due to not being continious.
+
+```{r}
+#80/20 %
+census_dis_1_tr = census_train_1[,]
+census_dis_1_tr$age.dis  = findInterval(census_dis_1_tr$age, c(17,35,50,70,90))
+census_dis_1_tr$education.dis  = findInterval(census_dis_1_tr$education.num, c(1,4,8,12))
+census_dis_1_tr$work.dis  = findInterval(census_dis_1_tr$hours.per.week, c(1,25,50,75,99))
+census_dis_1_tr$age.dis = as.factor(census_dis_1_tr$age.dis)
+census_dis_1_tr$education.dis = as.factor(census_dis_1_tr$education.dis)
+census_dis_1_tr$work.dis = as.factor(census_dis_1_tr$work.dis)
+fact_1_tr = sapply(census_dis_1_tr, is.factor)
+census_fact_1_tr = census_dis_1_tr[, fact_1_tr]
+census_fact_1_tr = census_fact_1_tr[c(1,2,3,4,5,7,8,9,6)]
+
+census_dis_1_ts = census_test_1[,]
+census_dis_1_ts$age.dis  = findInterval(census_dis_1_ts$age, c(17,35,50,70,90))
+census_dis_1_ts$education.dis  = findInterval(census_dis_1_ts$education.num, c(1,4,8,12))
+census_dis_1_ts$work.dis  = findInterval(census_dis_1_ts$hours.per.week, c(1,25,50,75,99))
+census_dis_1_ts$age.dis = as.factor(census_dis_1_ts$age.dis)
+census_dis_1_ts$education.dis = as.factor(census_dis_1_ts$education.dis)
+census_dis_1_ts$work.dis = as.factor(census_dis_1_ts$work.dis)
+fact_1_ts = sapply(census_dis_1_ts, is.factor)
+census_fact_1_ts = census_dis_1_ts[, fact_1_ts]
+census_fact_1_ts = census_fact_1_ts[c(1,2,3,4,5,7,8,9,6)]
+```
+
+```{r}
+#70/30 %
+census_dis_2_tr = census_train_2[,]
+census_dis_2_tr$age.dis  = findInterval(census_dis_2_tr$age, c(17,35,50,70,90))
+census_dis_2_tr$education.dis  = findInterval(census_dis_2_tr$education.num, c(1,4,8,12))
+census_dis_2_tr$work.dis  = findInterval(census_dis_2_tr$hours.per.week, c(1,25,50,75,99))
+census_dis_2_tr$age.dis = as.factor(census_dis_2_tr$age.dis)
+census_dis_2_tr$education.dis = as.factor(census_dis_2_tr$education.dis)
+census_dis_2_tr$work.dis = as.factor(census_dis_2_tr$work.dis)
+fact_2_tr = sapply(census_dis_2_tr, is.factor)
+census_fact_2_tr = census_dis_2_tr[, fact_2_tr]
+census_fact_2_tr = census_fact_2_tr[c(1,2,3,4,5,7,8,9,6)]
+
+census_dis_2_ts = census_test_2[,]
+census_dis_2_ts$age.dis  = findInterval(census_dis_2_ts$age, c(17,35,50,70,90))
+census_dis_2_ts$education.dis  = findInterval(census_dis_2_ts$education.num, c(1,4,8,12))
+census_dis_2_ts$work.dis  = findInterval(census_dis_2_ts$hours.per.week, c(1,25,50,75,99))
+census_dis_2_ts$age.dis = as.factor(census_dis_2_ts$age.dis)
+census_dis_2_ts$education.dis = as.factor(census_dis_2_ts$education.dis)
+census_dis_2_ts$work.dis = as.factor(census_dis_2_ts$work.dis)
+fact_2_ts = sapply(census_dis_2_ts, is.factor)
+census_fact_2_ts = census_dis_2_ts[, fact_2_ts]
+census_fact_2_ts = census_fact_2_ts[c(1,2,3,4,5,7,8,9,6)]
+```
+
+```{r}
+census_dis_3_tr = census_train_3[,]
+census_dis_3_tr$age.dis  = findInterval(census_dis_3_tr$age, c(17,35,50,70,90))
+census_dis_3_tr$education.dis  = findInterval(census_dis_3_tr$education.num, c(1,4,8,12))
+census_dis_3_tr$work.dis  = findInterval(census_dis_3_tr$hours.per.week, c(1,25,50,75,99))
+census_dis_3_tr$age.dis = as.factor(census_dis_3_tr$age.dis)
+census_dis_3_tr$education.dis = as.factor(census_dis_3_tr$education.dis)
+census_dis_3_tr$work.dis = as.factor(census_dis_3_tr$work.dis)
+fact_3_tr = sapply(census_dis_3_tr, is.factor)
+census_fact_3_tr = census_dis_3_tr[, fact_3_tr]
+census_fact_3_tr = census_fact_3_tr[c(1,2,3,4,5,7,8,9,6)]
+
+census_dis_3_ts = census_test_3[,]
+census_dis_3_ts$age.dis  = findInterval(census_dis_3_ts$age, c(17,35,50,70,90))
+census_dis_3_ts$education.dis  = findInterval(census_dis_3_ts$education.num, c(1,4,8,12))
+census_dis_3_ts$work.dis  = findInterval(census_dis_3_ts$hours.per.week, c(1,25,50,75,99))
+census_dis_3_ts$age.dis = as.factor(census_dis_3_ts$age.dis)
+census_dis_3_ts$education.dis = as.factor(census_dis_3_ts$education.dis)
+census_dis_3_ts$work.dis = as.factor(census_dis_3_ts$work.dis)
+fact_3_ts = sapply(census_dis_3_ts, is.factor)
+census_fact_3_ts = census_dis_3_ts[, fact_3_ts]
+census_fact_3_ts = census_fact_3_ts[c(1,2,3,4,5,7,8,9,6)]
+```
+********
+
+### **80/20 %**
+
+
+```{r}
+classifier_1 = CBA(income ~ ., census_fact_1_tr, supp = 0.01, conf=0.68)
+rules(classifier_1)
+rules_1.sorted = sort(rules(classifier_1), by = "lift")
+rules_1.pruned = rules_1.sorted[!is.redundant(rules_1.sorted)]
+predd_1 = predict(classifier_1, census_fact_1_ts)
+plot(rules_1.pruned,method = "paracoord",measure = "support", shading = "lift", jitter = 0)
+table(predd_1,census_fact_1_ts$income)  
+```
+
+  First model shows a decent accuracy rate of 80.58% and missclassification rate of 19.42%.
+
+********
+
+### **70/30 %**
+
+```{r}
+classifier_2 = CBA(income ~ ., census_fact_2_tr, supp = 0.01, conf=0.68)
+rules(classifier_2)
+rules_2.sorted = sort(rules(classifier_2), by = "lift")
+rules_2.pruned = rules_2.sorted[!is.redundant(rules_2.sorted)]
+predd_2 = predict(classifier_2, census_fact_2_ts)
+plot(rules_2.pruned,method = "paracoord",measure = "support", shading = "lift", jitter = 0)
+table(predd_2,census_fact_2_ts$income)  
+```
+
+  The second model appears to be more complex with few extra rules generated. This has affected the accuracy as well. A slight increase - 80.80%. Missclassification rate - 19.20%.
+  
+********
+
+### **60/40 %**
+
+```{r}
+classifier_3 = CBA(income ~ ., census_fact_3_tr, supp = 0.01, conf=0.68)
+rules(classifier_3)
+rules_3.sorted = sort(rules(classifier_3), by = "lift")
+rules_3.pruned = rules_3.sorted[!is.redundant(rules_3.sorted)]
+predd_3 = predict(classifier_3, census_fact_3_ts)
+plot(rules_3.pruned,method = "paracoord",measure = "support", shading = "lift", jitter = 0)
+table(predd_3,census_fact_3_ts$income)  
+```
+
+  Wider split didn't improve the prediction accuracy - 80.79%. Missclassification rate - 19.21%.
+
+********
+
+## **Association Rules(Descriptive Analysis)**
+
+  This part shows the descriptive analysis of the dataset, based on association rules. This method only works on factor class data. All continuous attributes have already been discretized above. But for better understanding I will give each interval a specific.
+  
+```{r}  
+census_dis_rul = census[,]
+census_dis_rul$age.dis  = findInterval(census_dis_rul$age, c(17,35,50,70,90))
+census_dis_rul$education.dis  = findInterval(census_dis_rul$education.num, c(1,4,8,12))
+census_dis_rul$work.dis  = findInterval(census_dis_rul$hours.per.week, c(1,25,50,75,99))
+census_dis_rul$age.dis = as.factor(census_dis_rul$age.dis)
+census_dis_rul$age.dis = revalue(census_dis_rul$age.dis, c("1"="young", "2"="adult", "3" = "mid.age", "4" = "old", "5" = "very.old"))
+census_dis_rul$education.dis = as.factor(census_dis_rul$education.dis)
+census_dis_rul$education.dis = revalue(census_dis_rul$education.dis, c("1" = "primitive", "2" = "educated", "3" = "intelligent", "4" = "genious"))
+census_dis_rul$work.dis = as.factor(census_dis_rul$work.dis)
+census_dis_rul$work.dis = revalue(census_dis_rul$work.dis, c("1"="free", "2"="hobby", "3" = "part.time", "4" = "full.time", "5" = "insane"))
+fact_rul = sapply(census_dis_rul, is.factor)
+census_fact_rul = census_dis_rul[, fact_rul]
+census_fact_rul = census_fact_rul[c(1,2,3,4,5,7,8,9,6)]
+```
+
+  Before creating associations the prepared data has to be reshaped as a transactions variable. This step must be done, because values in the factor levels aren't represented as 0 or 1 in traditional market transactions. All of them have more than 2 categories. To view the frequency of values in the data set a special plot will be used with support greater than 10%.
+
+```{r}
+census_tran_rul = as(census_fact_rul, "transactions")
+itemFrequencyPlot(census_tran_rul,support=.10)
+```
+
+  Firstly, i will display the summary of all rules generated with a minimum support of 1% and confidence of 69%.
+
+```{r}
+all_rules  = apriori(census_tran_rul,parameter=list(support=.01,confidence=.69,
+minlen=2))
+summary(all_rules)
+```
+
+  17901 rules were generated in total using the provided support and confidence. Given that information, I will find all the rules, which are associated to *income*. Or in other words, I will find all the factors, which are associated to this attribute.
+
+********
+
+### **Income = >50K**
+
+  Given the same metrics I will generate the rules, related to the income, which is greater than 50K.
+  
+```{r}  
+income_above = apriori(census_tran_rul,parameter=list(supp=.01,conf=.6,minlen=2),appearance = list(default="rhs",lhs="income=>50K"))  
+summary(income_above)
+```  
+  
+  It appears, that only a set of 5 rules was generated. However, there's a possibility, that these rules can be redundant. To avoid redundancy, I will remove them.
+  
+```{r}  
+income_above[!is.redundant(income_above)]
+```
+
+  Looks like no redundant rules were generated. The list of all rules looks like this.
+  
+```{r}  
+inspect(sort(income_above, by ="lift"))  
+```
+
+  It was already visible in the data preparation phase, which attribute factors are more likely to have *income* greater, than 50K. To understand this relation better a plot will be shown.
+  
+```{r}  
+plot(income_above,method="graph")
+```
+
+  To view the rules from the other perspective, *income* will be placed on the right side this time.
+  
+```{r}  
+income_above_r = apriori(census_tran_rul,parameter=list(supp=.01,conf=.6,minlen=2),appearance = list(default="lhs",rhs="income=>50K"))  
+summary(income_above_r)
+```
+
+  This time the generated number is much bigger than the previous one. 364 rules were created. This time there's a higher possibility that at least some of them are redundant.
+
+```{r}
+income_above_sorted = income_above_r[!is.redundant(income_above_r)]
+summary(income_above_sorted)
+```
+
+  121 rule was removed. The list of first 25 rules is represented below. Another method will be used to plot the rules.
+  
+```{r}
+inspect(head(sort(income_above_sorted, by ="lift"),5))
+plot(income_above_sorted,method="paracoord")
+```
+
+  The plot shows which factor levels are needed for income above 50K. Workclass - Government, Private, Self-Employed. Age varies from adulthood to early 40. Only married, male and white people have the higher income. A higher education degree is needed, which explains why they have jobs in White-Collar or Proffesional.
+  
+********
+
+### **Income <= 50K**
+
+  The below 50K income side is needed for analysis as well. This will show the difference in their classification.
+
+```{r}  
+income_below = apriori(census_tran_rul,parameter=list(supp=.01,conf=.6,minlen=2),appearance = list(default="rhs",lhs="income=<=50K"))  
+summary(income_above)
+```  
+
+  5 rules were generated. Despite this, redundancy check is still needed.
+  
+```{r}  
+income_below[!is.redundant(income_below)]
+```
+  No redundancy detected. Now the rules will be shown, being sorted by the lift metric.
+  
+```{r}  
+inspect(sort(income_below, by ="lift"))  
+```
+
+  Some rules on the right side have a bit similar to those created for >50K income. This is explained by class imbalance, where <=50K is leading.
+  
+```{r}  
+plot(income_below,method="graph")
+```
+
+  This perspective didn't show much of a differentiation. That's why income <=50K will be put on the right side.
+  
+```{r}
+income_below_r = apriori(census_tran_rul,parameter=list(supp=.01,conf=.6,minlen=2),appearance = list(default="lhs",rhs="income=<=50K"))  
+summary(income_below_r)
+```
+
+  Significantly more rules were generated. 3071 is a high number. Rendundancy check will show how many of them aren't needed.
+  
+```{r}  
+income_below_sorted = income_below_r[!is.redundant(income_below_r)]
+summary(income_below_sorted)
+```
+  
+  A lot of rules were dropped. 520 rules are now remaining. First 5 rules with the highest lift metric will be shown. Plot will describe how the associations were computed.
+  
+```{r}  
+inspect(head(sort(income_below_sorted, by ="lift"),5))
+plot(income_below_sorted,method="paracoord")
+```
+
+  This paracoord shows that education, workclass and marital status are the most dependant on the income. The lower are their values, the higher is the probability of having <=50K *income*.
+
+********
+
+## **Final Rating**  
+
+  In the previous phase different models and splitting were used. All what's left is to visualize the results and compare them. Model perfomance will be visualized with Rate of Classification(ROC) plot and an Area Under Curve(AUC) table. ROC curve is a plot of true positive rate against false positive rate under all threshold values. Confusion matrix is a measurement of overall prediction accuracy. Since the majority of observations in the data set has income less than 50k a year, sensitivity and specificity contribute to the overall accuracy by different weights. The five different classifiers are compared using ROC curve. Each classifier will have a prediction and performance objects created, which will be added to a data frame for True Positive and False Positive rates.
+  
+********
+
+### **80/20 % Performance**
+
+```{r}   
+logi_1 = prediction(prob_1, census_test_1$income)
+logi_1_f = performance(logi_1, measure = "tpr", x.measure = "fpr")
+logi_1_d = data.frame(FP = logi_1_f@x.values[[1]], TP = logi_1_f@y.values[[1]])
+
+cart_1 = prediction(tree_1.pred.prob[,2], census_test_1$income)
+cart_1_f = performance(cart_1, measure = "tpr", x.measure = "fpr")
+cart_1_d = data.frame(FP = cart_1_f@x.values[[1]], TP = cart_1_f@y.values[[1]])
+
+randf_1 = prediction(rf_1.pred.prob[,2], census_test_1$income)
+randf_1_f = performance(randf_1, measure = "tpr", x.measure = "fpr")
+randf_1_d = data.frame(FP = randf_1_f@x.values[[1]], TP = randf_1_f@y.values[[1]])
+
+nb_1 = as.numeric(NB_prediction_1)
+naive_1 = prediction(nb_1, census_test_1$income)
+naive_1_f = performance(naive_1, measure = "tpr", x.measure = "fpr")
+naive_1_d = data.frame(FP = naive_1_f@x.values[[1]], TP = naive_1_f@y.values[[1]])
+
+c_1 = as.numeric(census_pred_1_5)
+clust_1 = prediction(c_1, census.testLabels_1)
+clust_1_f = performance(clust_1, measure = "tpr", x.measure = "fpr")
+clust_1_d = data.frame(FP = clust_1_f@x.values[[1]], TP = clust_1_f@y.values[[1]])
+
+c_1_10 = as.numeric(census_pred_1_10)
+clust_1_10 = prediction(c_1_10, census.testLabels_1)
+clust_1_f_10 = performance(clust_1_10, measure = "tpr", x.measure = "fpr")
+clust_1_d_10 = data.frame(FP = clust_1_f_10@x.values[[1]], TP = clust_1_f_10@y.values[[1]])
+
+c_1_15 = as.numeric(census_pred_1_15)
+clust_1_15 = prediction(c_1_15, census.testLabels_1)
+clust_1_f_15 = performance(clust_1_15, measure = "tpr", x.measure = "fpr")
+clust_1_d_15 = data.frame(FP = clust_1_f_15@x.values[[1]], TP = clust_1_f_15@y.values[[1]])
+
+rule_1_this = as.numeric(predd_1)
+rule_1 = prediction(rule_1_this, census_fact_1_ts$income)
+rule_1_f = performance(rule_1, measure = "tpr", x.measure = "fpr")
+rule_1_d = data.frame(FP = rule_1_f@x.values[[1]], TP = rule_1_f@y.values[[1]])
+
+```
+
+```{r}
+g_1 = ggplot() + 
+  geom_line(data = logi_1_d, aes(x = FP, y = TP, color = 'Logistic Regression')) + 
+  geom_line(data = cart_1_d, aes(x = FP, y = TP, color = 'CART')) + 
+  geom_line(data = randf_1_d, aes(x = FP, y = TP, color = 'Random Forest')) + 
+  geom_line(data = naive_1_d, aes(x = FP, y = TP, color = 'Naive Bayes')) +
+  geom_line(data = clust_1_d, aes(x = FP, y = TP, color = 'KNN(5)')) +
+  geom_line(data = clust_1_d_10, aes(x = FP, y = TP, color = 'KNN(10)')) +
+  geom_line(data = clust_1_d_15, aes(x = FP, y = TP, color = 'KNN(15)')) +
+  geom_line(data = rule_1_d, aes(x = FP, y = TP, color = 'CBA')) +
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1)) +
+  ggtitle('ROC Curve') + 
+  labs(x = 'False Positive Rate', y = 'True Positive Rate') 
+
+
+g_1 +  scale_colour_manual(name = 'Classifier', values = c('Logistic Regression'='blue', 
+                                               'CART'='orange', 'Random Forest'='red', 
+                                               'Naive Bayes'='brown', 'KNN(5)'='yellow', 'KNN(10)'='green', 'KNN(15)'='purple', 'CBA'='cyan' ))
+```
+
+```{r}
+auc_1 = rbind(performance(logi_1, measure = 'auc')@y.values[[1]],
+             performance(cart_1, measure = 'auc')@y.values[[1]],
+             performance(randf_1, measure = 'auc')@y.values[[1]],
+             performance(naive_1, measure = 'auc')@y.values[[1]],
+             performance(clust_1, measure = 'auc')@y.values[[1]],
+             performance(clust_1_10, measure = 'auc')@y.values[[1]],
+             performance(clust_1_15, measure = 'auc')@y.values[[1]],
+             performance(rule_1, measure = 'auc')@y.values[[1]])
+
+rownames(auc_1) = (c('Logistic Regression', 'CART', 'Random Forest',
+                                    'Naive Bayes', 'KNN(5)', 'KNN(10)', 'KNN(15)', 'CBA'))
+colnames(auc_1) = 'Area Under ROC Curve'
+
+round(auc_1, 4)
+```
+
+  Logistic Regression, CART and Random Forest classifiers have the highest AUC values, while the other have lower results. Which is self explanatory due to their complexity and high prediction accuracy results, which were shown in the confusion matrix.
+  
+********
+
+### **70/30 % Performance**
+
+```{r}   
+logi_2 = prediction(prob_2, census_test_2$income)
+logi_2_f = performance(logi_2, measure = "tpr", x.measure = "fpr")
+logi_2_d = data.frame(FP = logi_2_f@x.values[[1]], TP = logi_2_f@y.values[[1]])
+
+cart_2 = prediction(tree_2.pred.prob[,2], census_test_2$income)
+cart_2_f = performance(cart_2, measure = "tpr", x.measure = "fpr")
+cart_2_d = data.frame(FP = cart_2_f@x.values[[1]], TP = cart_2_f@y.values[[1]])
+
+randf_2 = prediction(rf_2.pred.prob[,2], census_test_2$income)
+randf_2_f = performance(randf_2, measure = "tpr", x.measure = "fpr")
+randf_2_d = data.frame(FP = randf_2_f@x.values[[1]], TP = randf_2_f@y.values[[1]])
+
+nb_2 = as.numeric(NB_prediction_2)
+naive_2 = prediction(nb_2, census_test_2$income)
+naive_2_f = performance(naive_2, measure = "tpr", x.measure = "fpr")
+naive_2_d = data.frame(FP = naive_2_f@x.values[[1]], TP = naive_2_f@y.values[[1]])
+
+c_2 = as.numeric(census_pred_2_5)
+clust_2 = prediction(c_2, census.testLabels_2)
+clust_2_f = performance(clust_2, measure = "tpr", x.measure = "fpr")
+clust_2_d = data.frame(FP = clust_2_f@x.values[[1]], TP = clust_2_f@y.values[[1]])
+
+c_2_10 = as.numeric(census_pred_2_10)
+clust_2_10 = prediction(c_2_10, census.testLabels_2)
+clust_2_f_10 = performance(clust_2_10, measure = "tpr", x.measure = "fpr")
+clust_2_d_10 = data.frame(FP = clust_2_f_10@x.values[[1]], TP = clust_2_f_10@y.values[[1]])
+
+c_2_15 = as.numeric(census_pred_2_15)
+clust_2_15 = prediction(c_2_15, census.testLabels_2)
+clust_2_f_15 = performance(clust_2_15, measure = "tpr", x.measure = "fpr")
+clust_2_d_15 = data.frame(FP = clust_2_f_15@x.values[[1]], TP = clust_2_f_15@y.values[[1]])
+
+rule_2_this = as.numeric(predd_2)
+rule_2 = prediction(rule_2_this, census_fact_2_ts$income)
+rule_2_f = performance(rule_2, measure = "tpr", x.measure = "fpr")
+rule_2_d = data.frame(FP = rule_2_f@x.values[[1]], TP = rule_2_f@y.values[[1]])
+```
+
+```{r}
+g_2 = ggplot() + 
+  geom_line(data = logi_2_d, aes(x = FP, y = TP, color = 'Logistic Regression')) + 
+  geom_line(data = cart_2_d, aes(x = FP, y = TP, color = 'CART')) + 
+  geom_line(data = randf_2_d, aes(x = FP, y = TP, color = 'Random Forest')) + 
+  geom_line(data = naive_2_d, aes(x = FP, y = TP, color = 'Naive Bayes')) +
+  geom_line(data = clust_2_d, aes(x = FP, y = TP, color = 'KNN(5)')) +
+  geom_line(data = clust_2_d_10, aes(x = FP, y = TP, color = 'KNN(10)')) +
+  geom_line(data = clust_2_d_15, aes(x = FP, y = TP, color = 'KNN(15)')) +
+  geom_line(data = rule_2_d, aes(x = FP, y = TP, color = 'CBA')) +
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1)) +
+  ggtitle('ROC Curve') + 
+  labs(x = 'False Positive Rate', y = 'True Positive Rate') 
+
+
+g_2 +  scale_colour_manual(name = 'Classifier', values = c('Logistic Regression'='blue', 
+                                               'CART'='orange', 'Random Forest'='red', 
+                                               'Naive Bayes'='brown', 'KNN(5)'='yellow', 'KNN(10)'='green', 'KNN(15)'='purple', 'CBA' = 'cyan'))
+```
+
+```{r}
+auc_2 = rbind(performance(logi_2, measure = 'auc')@y.values[[1]],
+             performance(cart_2, measure = 'auc')@y.values[[1]],
+             performance(randf_2, measure = 'auc')@y.values[[1]],
+             performance(naive_2, measure = 'auc')@y.values[[1]],
+             performance(clust_2, measure = 'auc')@y.values[[1]],
+             performance(clust_2_10, measure = 'auc')@y.values[[1]],
+             performance(clust_2_15, measure = 'auc')@y.values[[1]],
+             performance(rule_2, measure = 'auc')@y.values[[1]])
+
+rownames(auc_2) = (c('Logistic Regression', 'CART', 'Random Forest',
+                                    'Naive Bayes', 'KNN(5)', 'KNN(10)', 'KNN(15)', 'CBA'))
+colnames(auc_2) = 'Area Under ROC Curve'
+
+round(auc_2, 4)
+```
+
+  Logistic regression, CART and Random Forest classifiers are still on the winning positions. However, the Logistic Regression has decreased, CART shows significantly better performance.
+  
+********
+
+### **60/40 % Performance**
+
+```{r}   
+logi_3 = prediction(prob_3, census_test_3$income)
+logi_3_f = performance(logi_3, measure = "tpr", x.measure = "fpr")
+logi_3_d = data.frame(FP = logi_3_f@x.values[[1]], TP = logi_3_f@y.values[[1]])
+
+cart_3 = prediction(tree_3.pred.prob[,2], census_test_3$income)
+cart_3_f = performance(cart_3, measure = "tpr", x.measure = "fpr")
+cart_3_d = data.frame(FP = cart_3_f@x.values[[1]], TP = cart_3_f@y.values[[1]])
+
+randf_3 = prediction(rf_3.pred.prob[,2], census_test_3$income)
+randf_3_f = performance(randf_3, measure = "tpr", x.measure = "fpr")
+randf_3_d = data.frame(FP = randf_3_f@x.values[[1]], TP = randf_3_f@y.values[[1]])
+
+nb_3 = as.numeric(NB_prediction_3)
+naive_3 = prediction(nb_3, census_test_3$income)
+naive_3_f = performance(naive_3, measure = "tpr", x.measure = "fpr")
+naive_3_d = data.frame(FP = naive_3_f@x.values[[1]], TP = naive_3_f@y.values[[1]])
+
+c_3 = as.numeric(census_pred_3_5)
+clust_3 = prediction(c_3, census.testLabels_3)
+clust_3_f = performance(clust_3, measure = "tpr", x.measure = "fpr")
+clust_3_d = data.frame(FP = clust_3_f@x.values[[1]], TP = clust_3_f@y.values[[1]])
+
+c_3_10 = as.numeric(census_pred_3_10)
+clust_3_10 = prediction(c_3_10, census.testLabels_3)
+clust_3_f_10 = performance(clust_3_10, measure = "tpr", x.measure = "fpr")
+clust_3_d_10 = data.frame(FP = clust_3_f_10@x.values[[1]], TP = clust_3_f_10@y.values[[1]])
+
+c_3_15 = as.numeric(census_pred_3_15)
+clust_3_15 = prediction(c_3_15, census.testLabels_3)
+clust_3_f_15 = performance(clust_3_15, measure = "tpr", x.measure = "fpr")
+clust_3_d_15 = data.frame(FP = clust_3_f_15@x.values[[1]], TP = clust_3_f_15@y.values[[1]])
+
+rule_3_this = as.numeric(predd_3)
+rule_3 = prediction(rule_3_this, census_fact_3_ts$income)
+rule_3_f = performance(rule_3, measure = "tpr", x.measure = "fpr")
+rule_3_d = data.frame(FP = rule_3_f@x.values[[1]], TP = rule_3_f@y.values[[1]])
+```
+
+```{r}
+g_3 = ggplot() + 
+  geom_line(data = logi_3_d, aes(x = FP, y = TP, color = 'Logistic Regression')) + 
+  geom_line(data = cart_3_d, aes(x = FP, y = TP, color = 'CART')) + 
+  geom_line(data = randf_3_d, aes(x = FP, y = TP, color = 'Random Forest')) + 
+  geom_line(data = naive_3_d, aes(x = FP, y = TP, color = 'Naive Bayes')) +
+  geom_line(data = clust_3_d, aes(x = FP, y = TP, color = 'KNN(5)')) +
+  geom_line(data = clust_3_d_10, aes(x = FP, y = TP, color = 'KNN(10)')) +
+  geom_line(data = clust_3_d_15, aes(x = FP, y = TP, color = 'KNN(15)')) +
+  geom_line(data = rule_3_d, aes(x = FP, y = TP, color = 'CBA')) +
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1)) +
+  ggtitle('ROC Curve') + 
+  labs(x = 'False Positive Rate', y = 'True Positive Rate') 
+
+
+g_3 +  scale_colour_manual(name = 'Classifier', values = c('Logistic Regression'='blue', 
+                                               'CART'='orange', 'Random Forest'='red', 
+                                               'Naive Bayes'='brown', 'KNN(5)'='yellow', 'KNN(10)'='green', 'KNN(15)'='purple', 'CBA'='cyan'))
+```
+
+```{r}
+auc_3 = rbind(performance(logi_3, measure = 'auc')@y.values[[1]],
+             performance(cart_3, measure = 'auc')@y.values[[1]],
+             performance(randf_3, measure = 'auc')@y.values[[1]],
+             performance(naive_3, measure = 'auc')@y.values[[1]],
+             performance(clust_3, measure = 'auc')@y.values[[1]],
+             performance(clust_3_10, measure = 'auc')@y.values[[1]],
+             performance(clust_3_15, measure = 'auc')@y.values[[1]],
+             performance(rule_3, measure = 'auc')@y.values[[1]])
+
+rownames(auc_3) = (c('Logistic Regression', 'CART', 'Random Forest',
+                                    'Naive Bayes', 'KNN(5)', 'KNN(10)', 'KNN(15)', 'CBA'))
+colnames(auc_3) = 'Area Under ROC Curve'
+
+round(auc_3, 4)
+```
+
+  Needless to say, the 60/40 % split shows the worst performance by "harming" the accuracy of the first 3 classifiers.
+  
+********
+
+## **Table of the Final Performance**
+
+  Here will be shown all Area Under ROC performance metrics to compare how well did the models classify *income*.
+  
+  Classificator |  80/20 % | 70/30 % | 60/40 %
+  ------- | -------| ------- | -------
+  Logistic Regression | 0.8977 | 0.8966 | 0.8960 
+  CART | 0.8772 | 0.8933 | 0.8930
+  Random Forest | 0.9010 | 0.9013 | 0.8995
+  Naive Bayes | 0.6465 | 0.6485 | 0.6432
+  KNN(5) | 0.7226 | 0.7259 | 0.7166
+  KNN(10) | 0.7204 |0.7202 | 0.7128
+  KNN(15) | 0.7189 | 0.7145 | 0.7091
+  CBA | 0.6290 | 0.6352 | 0.6305
+
+********
+
+
+# **Conclusion**
+
+  To sum up, Census Income data set analysis has shown incredible results in the *income* category classification, despite the class imbalance. Different train/test splits were used, while the 70/30 % had performed the best. Out of all chosen classification models three of them achieved above 89% prediction accuracy. Data Preprocessing phase did a great job in improving the modeling phase. Descriptive analytic has shown how dependant *income* is . That's why Logistic Regression, CART and Random Forest classifiers performed so well. 
+
+
+![Thanks](/Users/Admin/Documents/imgs/finale.jpg)
+
+
+
+
+
+
+

@@ -1,14 +1,14 @@
 # Census_income
-This project aims on analyzing and "cleaning" the Census Income data set in order to fit the modified data into various models, where the main task is to classify whether the yearly income is higher or lower than 50K. This includes descriptive, predictive and prescriptive analysis presented in a form of RMarkdown document(which also comes with a compiled .html version), where the code is fully written in R. There's also a dynamic RShiny documentation which allows the user to input their own data and predict the outcome based on the model which has performed best.  
+This project aims on analyzing and "cleaning" the Census Income data set in order to fit the modified data into various models, where the main task is to classify whether the yearly income is higher or lower than 50K. This includes descriptive, predictive and prescriptive analysis presented in a form of RMarkdown document(which also comes with a compiled .html version), where the code is fully written in R. There's also a dynamic RShiny documentation which allows the user to input their own data and predict the outcome based on the model which has performed best. The already compiled .html version is available [here](https://htmlpreview.github.io/?https://raw.githubusercontent.com/MeaMoon/Census_income/main/Census.html).
 ## RMarkdown contents
 This documentation contains all of the analysis in order as follows:
-* 1. Introduction
-* 2. Data Understanding
-* 3. Data Preparation
-* 4. Modeling
-* 5. Association Rules
-* 6. Final Rating
-* 7. Conclusion
+* Introduction
+* Data Understanding
+* Data Preparation
+* Modeling
+* Association Rules
+* Final Rating
+* Conclusion
 ## RShiny contents
 This dashboard was created using the [shinydashboard](https://rstudio.github.io/shinydashboard/) package. This documentation contains several interactive tabs, such as:
 * Overall info
